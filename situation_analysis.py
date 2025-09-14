@@ -17,6 +17,10 @@ class SituationAnalyzer:
             'threat', 'violence', 'robbery', 'attack', 'medical', 'urgent'
         ]
         
+        self.emergency_gestures = [
+            'help gesture detected'
+        ]
+        
         self.safety_zones = {
             'safe': ['home', 'office', 'school', 'hospital', 'police_station'],
             'moderate': ['street', 'park', 'mall', 'restaurant'],
@@ -33,7 +37,7 @@ class SituationAnalyzer:
     def decode_base64_image(self, base64_string):
         """Decode base64 image string to OpenCV format"""
         try:
-            if 'data:image' in base64_string:
+            if isinstance(base64_string, str) and 'data:image' in base64_string:
                 base64_string = base64_string.split(',')[1]
             
             image_bytes = base64.b64decode(base64_string)
@@ -200,9 +204,23 @@ class SituationAnalyzer:
             
             # Emergency gesture detection
             emergency_risk = 0.0
+            emergency_gestures_detected = []
+            
+            # Check for emergency signals
             if gesture_data and 'emergency_signals' in gesture_data:
                 if gesture_data['emergency_signals']:
                     emergency_risk = 0.9  # High risk if emergency gestures detected
+            
+            # Check for help gesture specifically
+            if gesture_data and 'gestures' in gesture_data:
+                for gesture in gesture_data['gestures']:
+                    if gesture.get('message') in self.emergency_gestures or gesture.get('emergency', False):
+                        emergency_risk = 0.9  # High risk if help gesture detected
+                        emergency_gestures_detected.append({
+                            'type': gesture.get('name', 'Unknown'),
+                            'message': gesture.get('message', 'Emergency gesture detected'),
+                            'confidence': gesture.get('confidence', 0.8)
+                        })
             
             # Weighted average
             weights = {
@@ -284,8 +302,13 @@ class SituationAnalyzer:
             
             # Check for emergency conditions
             if (risk_assessment.get('risk_level') == 'high' or 
-                (gesture_data and gesture_data.get('emergency_signals'))):
+                (gesture_data and gesture_data.get('emergency_signals')) or
+                emergency_gestures_detected):
                 response["emergency_detected"] = True
+                response["emergency_analysis"] = {
+                    "emergency_detected": True,
+                    "emergency_gestures": emergency_gestures_detected
+                }
                 response["emergency_details"] = {
                     "type": "situation_analysis",
                     "urgency": "high",
