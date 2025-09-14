@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guardian Eye - Gesture Recognition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-top: 10px;
+        }
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 30px;
+            gap: 20px;
+        }
+        .video-container {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .results-container {
+            flex: 1;
+            min-width: 300px;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #videoElement {
+            width: 100%;
+            border-radius: 4px;
+            background-color: #000;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        #captureBtn {
+            background-color: #e74c3c;
+        }
+        #captureBtn:hover {
+            background-color: #c0392b;
+        }
+        .result-card {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #3498db;
+        }
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .confidence {
+            background-color: #2ecc71;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+        .low-confidence {
+            background-color: #f39c12;
+        }
+        .very-low-confidence {
+            background-color: #e74c3c;
+        }
+        .gesture-details {
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .canvas-container {
+            display: none;
+        }
+        #status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #6c757d;
+        }
+        .loading {
+            border-left: 4px solid #f39c12;
+        }
+        .success {
+            border-left: 4px solid #2ecc71;
+        }
+        .error {
+            border-left: 4px solid #e74c3c;
+        }
+        .emergency {
+            background-color: #ffebee;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+        }
+        .emergency-title {
+            color: #c0392b;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .safety-tips {
+            margin-top: 20px;
+        }
+        .safety-tips h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .safety-tips ul {
+            padding-left: 20px;
+        }
+        .safety-tips li {
+            margin-bottom: 5px;
+        }
+        .bounding-box {
+            position: absolute;
+            border: 2px solid #e74c3c;
+            background-color: rgba(231, 76, 60, 0.2);
+            pointer-events: none;
+        }
+        #videoContainer {
+            position: relative;
+        }
+        .gesture-label {
+            position: absolute;
+            background-color: #e74c3c;
+            color: white;
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 2px;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Guardian Eye</h1>
+            <div class="subtitle">Smart India Hackathon - Safety & Gesture Recognition</div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="main-content">
+            <div class="video-container">
+                <h2>Gesture Detection</h2>
+                <div id="videoContainer">
+                    <video id="videoElement" autoplay playsinline></video>
+                </div>
+                <div class="controls">
+                    <button id="startBtn">Start Camera</button>
+                    <button id="captureBtn" disabled>Capture & Analyze</button>
+                    <button id="stopBtn" disabled>Stop Camera</button>
+                </div>
+                <div id="status">Camera is off. Click "Start Camera" to begin.</div>
+                <div class="canvas-container">
+                    <canvas id="canvas"></canvas>
+                </div>
+            </div>
+
+            <div class="results-container">
+                <h2>Analysis Results</h2>
+                <div id="results">
+                    <div class="result-card">
+                        <div class="result-title">No analysis yet</div>
+                        <p>Capture an image to see gesture recognition results.</p>
+                    </div>
+                </div>
+                <div id="emergencyContainer"></div>
+                <div id="safetyTips" class="safety-tips"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const videoElement = document.getElementById('videoElement');
+            const canvas = document.getElementById('canvas');
+            const startBtn = document.getElementById('startBtn');
+            const captureBtn = document.getElementById('captureBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const statusElement = document.getElementById('status');
+            const resultsElement = document.getElementById('results');
+            const emergencyContainer = document.getElementById('emergencyContainer');
+            const safetyTips = document.getElementById('safetyTips');
+            const videoContainer = document.getElementById('videoContainer');
+
+            // Variables
+            let stream = null;
+            const apiEndpoint = '/api/analyze-complete';
+
+            // Start camera
+            startBtn.addEventListener('click', async () => {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    videoElement.srcObject = stream;
+                    updateStatus('Camera is on. Click "Capture & Analyze" to detect gestures.', 'success');
+                    startBtn.disabled = true;
+                    captureBtn.disabled = false;
+                    stopBtn.disabled = false;
+                } catch (error) {
+                    updateStatus(`Error accessing camera: ${error.message}`, 'error');
+                    console.error('Error accessing camera:', error);
+                }
+            });
+
+            // Stop camera
+            stopBtn.addEventListener('click', () => {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    videoElement.srcObject = null;
+                    updateStatus('Camera is off. Click "Start Camera" to begin.', '');
+                    startBtn.disabled = false;
+                    captureBtn.disabled = true;
+                    stopBtn.disabled = true;
+                    clearBoundingBoxes();
+                }
+            });
+
+            // Capture and analyze
+            captureBtn.addEventListener('click', () => {
+                if (!stream) {
+                    updateStatus('Camera not started', 'error');
+                    return;
+                }
+
+                try {
+                    // Set canvas dimensions to match video
+                    canvas.width = videoElement.videoWidth;
+                    canvas.height = videoElement.videoHeight;
+                    
+                    if (canvas.width <= 0 || canvas.height <= 0) {
+                        throw new Error('Invalid video dimensions');
+                    }
+
+                    // Draw video frame to canvas
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                    // Convert canvas to base64 image with better quality
+                    const imageData = canvas.toDataURL('image/jpeg', 0.95); // Increased quality
+                    const base64Data = imageData.split(',')[1];
+                    
+                    // Validate the image data before sending
+                    if (!base64Data || base64Data.trim() === '') {
+                        throw new Error('Failed to capture image data');
+                    }
+
+                    // Send to API
+                    analyzeImage(base64Data);
+                } catch (error) {
+                    updateStatus(`Capture failed: ${error.message}`, 'error');
+                    console.error('Error capturing image:', error);
+                }
+            });
+
+            // Send image to API for analysis
+            async function analyzeImage(base64Image) {
+                updateStatus('Analyzing image...', 'loading');
+                clearResults();
+
+                try {
+                    // Validate base64Image before sending
+                    if (!base64Image || typeof base64Image !== 'string' || base64Image.trim() === '') {
+                        throw new Error('Invalid image data');
+                    }
+                    
+                    updateStatus('Sending request to API...', 'processing');
+                    
+                    const response = await fetch(apiEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            image: base64Image
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('API response error:', errorText);
+                        let errorMessage = `API error: ${response.status}`;
+                        
+                        // Try to extract more detailed error message from response
+                        try {
+                            const errorJson = JSON.parse(errorText);
+                            if (errorJson && errorJson.error) {
+                                errorMessage = errorJson.error;
+                            }
+                        } catch (e) {
+                            // If parsing fails, use the raw error text if it's not too long
+                            if (errorText && errorText.length < 100) {
+                                errorMessage += ` - ${errorText}`;
+                            }
+                        }
+                        
+                        throw new Error(errorMessage);
+                    }
+
+                    const data = await response.json();
+                    
+                    // Check for error in the response data
+                    if (data.error) {
+                        throw new Error(`Analysis error: ${data.error}`);
+                    }
+                    
+                    displayResults(data);
+                    updateStatus('Analysis complete', 'success');
+                } catch (error) {
+                    updateStatus(`Error analyzing image: ${error.message}`, 'error');
+                    console.error('Error analyzing image:', error);
+                    
+                    // Display error in results area for better visibility
+                    resultsElement.innerHTML = `
+                        <div class="result-card error-card">
+                            <div class="result-title">Analysis Failed</div>
+                            <p>${error.message}</p>
+                            <p>Try adjusting lighting, camera position, or restarting the camera.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Display analysis results
+            function displayResults(data) {
+                clearResults();
+                clearBoundingBoxes();
+
+                // Get gesture recognition results
+                const gestureResults = data.gesture_recognition;
+                if (gestureResults && gestureResults.gestures && gestureResults.gestures.length > 0) {
+                    const gestures = gestureResults.gestures;
+                    let resultsHTML = '';
+
+                    gestures.forEach((gesture, index) => {
+                        // Create result card for each gesture
+                        const confidenceClass = getConfidenceClass(gesture.confidence);
+                        resultsHTML += `
+                            <div class="result-card">
+                                <div class="result-title">
+                                    Gesture ${index + 1}: ${gesture.name}
+                                    <span class="confidence ${confidenceClass}">${Math.round(gesture.confidence * 100)}%</span>
+                                </div>
+                                <div class="gesture-details">
+                                    <p>${gesture.description || 'No description available'}</p>
+                                    <p>Area: ${gesture.area}, Aspect Ratio: ${gesture.aspect_ratio.toFixed(2)}</p>
+                                </div>
+                            </div>
+                        `;
+
+                        // Add bounding box
+                        if (gesture.bbox) {
+                            addBoundingBox(gesture.bbox, gesture.name);
+                        }
+                    });
+
+                    resultsElement.innerHTML = resultsHTML;
+                } else {
+                    resultsElement.innerHTML = `
+                        <div class="result-card">
+                            <div class="result-title">No gestures detected</div>
+                            <p>Try adjusting your hand position or lighting conditions.</p>
+                        </div>
+                    `;
+                }
+
+                // Check for emergency
+                if (data.emergency_analysis && data.emergency_analysis.emergency_detected) {
+                    // Check for help gesture specifically
+                    let helpGestureDetected = false;
+                    if (data.emergency_analysis.emergency_gestures) {
+                        for (const gesture of data.emergency_analysis.emergency_gestures) {
+                            if (gesture.message === 'help gesture detected') {
+                                helpGestureDetected = true;
+                                // Display help gesture message prominently
+                                emergencyContainer.innerHTML = `
+                                    <div class="emergency">
+                                        <div class="emergency-title">⚠️ Help Gesture Detected</div>
+                                        <p>Five-finger outward palm detected - indicating a request for help</p>
+                                        <p><strong>Message:</strong> help gesture detected</p>
+                                    </div>
+                                `;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If not a help gesture but still an emergency
+                    if (!helpGestureDetected) {
+                        displayEmergency(data.overall_assessment, data.emergency_response);
+                    }
+                } else {
+                    emergencyContainer.innerHTML = '';
+                }
+
+                // Display safety tips
+                if (data.safety_recommendations) {
+                    displaySafetyTips(data.safety_recommendations);
+                }
+            }
+
+            // Display emergency information
+            function displayEmergency(assessment, response) {
+                let emergencyHTML = `
+                    <div class="emergency">
+                        <div class="emergency-title">⚠️ Emergency Detected</div>
+                        <p>Risk Level: ${assessment.risk_level.toUpperCase()}</p>
+                `;
+
+                if (response && response.recommended_actions) {
+                    emergencyHTML += '<p><strong>Recommended Actions:</strong></p><ul>';
+                    response.recommended_actions.forEach(action => {
+                        emergencyHTML += `<li>${action}</li>`;
+                    });
+                    emergencyHTML += '</ul>';
+                }
+
+                if (response && response.emergency_contacts) {
+                    emergencyHTML += '<p><strong>Emergency Contacts:</strong></p><ul>';
+                    for (const [service, number] of Object.entries(response.emergency_contacts)) {
+                        emergencyHTML += `<li>${service.replace('_', ' ')}: ${number}</li>`;
+                    }
+                    emergencyHTML += '</ul>';
+                }
+
+                emergencyHTML += '</div>';
+                emergencyContainer.innerHTML = emergencyHTML;
+            }
+
+            // Display safety tips
+            function displaySafetyTips(tips) {
+                if (!tips || !tips.length) return;
+
+                let tipsHTML = '<h3>Safety Tips</h3><ul>';
+                tips.forEach(tip => {
+                    tipsHTML += `<li>${tip}</li>`;
+                });
+                tipsHTML += '</ul>';
+
+                safetyTips.innerHTML = tipsHTML;
+            }
+
+            // Add bounding box to video container
+            function addBoundingBox(bbox, gestureName) {
+                const videoRect = videoElement.getBoundingClientRect();
+                const scaleX = videoRect.width / videoElement.videoWidth;
+                const scaleY = videoRect.height / videoElement.videoHeight;
+
+                // Create bounding box
+                const box = document.createElement('div');
+                box.className = 'bounding-box';
+                box.style.left = `${bbox.x * scaleX}px`;
+                box.style.top = `${bbox.y * scaleY}px`;
+                box.style.width = `${bbox.width * scaleX}px`;
+                box.style.height = `${bbox.height * scaleY}px`;
+
+                // Create label
+                const label = document.createElement('div');
+                label.className = 'gesture-label';
+                label.textContent = gestureName;
+                label.style.left = `${bbox.x * scaleX}px`;
+                label.style.top = `${(bbox.y * scaleY) - 20}px`;
+
+                videoContainer.appendChild(box);
+                videoContainer.appendChild(label);
+            }
+
+            // Clear bounding boxes
+            function clearBoundingBoxes() {
+                const boxes = document.querySelectorAll('.bounding-box, .gesture-label');
+                boxes.forEach(box => box.remove());
+            }
+
+            // Update status message
+            function updateStatus(message, className) {
+                statusElement.textContent = message;
+                statusElement.className = '';
+                if (className) {
+                    statusElement.classList.add(className);
+                }
+            }
+
+            // Clear results
+            function clearResults() {
+                resultsElement.innerHTML = '';
+                emergencyContainer.innerHTML = '';
+                safetyTips.innerHTML = '';
+            }
+
+            // Get confidence class based on confidence value
+            function getConfidenceClass(confidence) {
+                if (confidence < 0.4) return 'very-low-confidence';
+                if (confidence < 0.7) return 'low-confidence';
+                return '';
+            }
+        });
+    </script>
+</body>
+</html>
