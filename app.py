@@ -76,6 +76,13 @@ def recognize_gesture():
         image_data = request.json.get('image')
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
+            
+        # Validate image data format
+        if isinstance(image_data, str):
+            if not image_data.strip():
+                return jsonify({"error": "Empty image data provided"}), 400
+        else:
+            return jsonify({"error": "Invalid image data format"}), 400
         
         # Process gesture recognition
         logger.info("Processing gesture recognition request")
@@ -113,6 +120,13 @@ def analyze_situation():
         image_data = request.json.get('image')
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
+            
+        # Validate image data format
+        if isinstance(image_data, str):
+            if not image_data.strip():
+                return jsonify({"error": "Empty image data provided"}), 400
+        else:
+            return jsonify({"error": "Invalid image data format"}), 400
         
         # Optional: Get additional context data
         location_data = request.json.get('location')
@@ -150,6 +164,13 @@ def analyze_complete():
         image_data = request.json.get('image')
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
+            
+        # Validate image data format
+        if isinstance(image_data, str):
+            if not image_data.strip():
+                return jsonify({"error": "Empty image data provided"}), 400
+        else:
+            return jsonify({"error": "Invalid image data format"}), 400
         
         # Optional: Get additional context data
         location_data = request.json.get('location')
@@ -188,7 +209,29 @@ def analyze_complete():
         high_risk = situation_result.get("risk_assessment", {}).get("risk_level") == "high"
         situation_emergency = situation_result.get("emergency_detected", False)
         
-        if emergency_gestures or high_risk or situation_emergency:
+        # Check for help gesture specifically
+        help_gesture_detected = False
+        if "gestures" in gesture_result:
+            for gesture in gesture_result.get("gestures", []):
+                if gesture.get("gesture") == "help" or gesture.get("name") == "Help Gesture" or gesture.get("message") == "help gesture detected" or gesture.get("emergency", False):
+                    help_gesture_detected = True
+                    emergency_gestures.append("Help gesture detected")
+                    
+                    # Add emergency analysis to the response if not already present
+                    if "emergency_analysis" not in combined_result:
+                        combined_result["emergency_analysis"] = {
+                            "emergency_detected": True,
+                            "emergency_gestures": []
+                        }
+                    
+                    combined_result["emergency_analysis"]["emergency_gestures"].append({
+                        "type": gesture.get("name", "Help Gesture"),
+                        "message": "help gesture detected",
+                        "confidence": gesture.get("confidence", 0.9)
+                    })
+                    break
+        
+        if emergency_gestures or high_risk or situation_emergency or help_gesture_detected:
             combined_result["overall_assessment"]["emergency_detected"] = True
             combined_result["overall_assessment"]["immediate_action_required"] = True
             
@@ -196,6 +239,8 @@ def analyze_complete():
             emergency_actions = []
             if emergency_gestures:
                 emergency_actions.extend(["Emergency gesture detected", "Contact emergency services"])
+            if help_gesture_detected:
+                emergency_actions.extend(["Help gesture detected", "Immediate assistance required"])
             if high_risk:
                 emergency_actions.extend(["High risk situation identified", "Move to safer location"])
             
